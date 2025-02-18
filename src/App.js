@@ -23,12 +23,30 @@ export default function App() {
 
 function Map() {
   const dispatch = useDispatch();
-  const { data } = useSwr("mapbox_heatmap", async () => {
+  const { data } = useSwr("heatmap", async () => {
     const response = await fetch(
       "https://gist.githubusercontent.com/hbu50/c7cd7e2deb80c9d9c04a95b3fbfb4c80/raw/fa0098b909a32a20e5616c8ee0dc60f556af759f/heatmap.json"
     );
-    const data = await response.json();
-    return data;
+    const jsonData = await response.json();
+    
+    return {
+      fields: [
+        {name: 'store_code', format: '', type: 'string'},
+        {name: 'business_day', format: 'YYYY-MM-DD', type: 'timestamp'},
+        {name: 'h3_index', format: '', type: 'string'},
+        {name: 'q', format: '', type: 'integer'},
+        {name: 'latitude', format: '', type: 'real'},
+        {name: 'longitude', format: '', type: 'real'}
+      ],
+      rows: jsonData.map(item => [
+        item.store_code,
+        item.business_day,
+        item.h3_index,
+        item.q,
+        item.latitude,
+        item.longitude
+      ])
+    };
   });
 
   React.useEffect(() => {
@@ -37,8 +55,8 @@ function Map() {
         addDataToMap({
           datasets: {
             info: {
-              label: "mapbox_heatmap",
-              id: "mapbox_heatmap"
+              label: 'Store Heatmap Data',
+              id: 'heatmap_data'
             },
             data
           },
@@ -46,7 +64,21 @@ function Map() {
             centerMap: true,
             readOnly: false
           },
-          config: {}
+          config: {
+            visState: {
+              layers: [{
+                type: 'heatmap',
+                config: {
+                  dataId: 'heatmap_data',
+                  columns: {
+                    lat: 'latitude',
+                    lng: 'longitude',
+                    weight: 'q'
+                  }
+                }
+              }]
+            }
+          }
         })
       );
     }
@@ -54,7 +86,7 @@ function Map() {
 
   return (
     <KeplerGl
-      id="mapbox_heatmap"
+      id="heatmap"
       mapboxApiAccessToken={process.env.REACT_APP_MAPBOX_API}
       width={window.innerWidth}
       height={window.innerHeight}
