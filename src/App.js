@@ -6,6 +6,7 @@ import { Provider, useDispatch } from "react-redux";
 import KeplerGl from "kepler.gl";
 import { addDataToMap } from "kepler.gl/actions";
 import useSwr from "swr";
+import { h3ToGeo } from "h3-js";
 
 const reducers = combineReducers({
   keplerGl: keplerGlReducer
@@ -29,6 +30,19 @@ function Map() {
     );
     const jsonData = await response.json();
     
+    // Transform data to match Kepler.gl format
+    const processedData = jsonData.map(point => {
+      const [lat, lng] = h3ToGeo(point.h3_index);
+      return {
+        store_code: point.store_code,
+        business_day: point.business_day,
+        h3_index: point.h3_index,
+        q: point.q,
+        latitude: lat,
+        longitude: lng
+      };
+    });
+
     return {
       fields: [
         {name: 'store_code', format: '', type: 'string'},
@@ -38,7 +52,7 @@ function Map() {
         {name: 'latitude', format: '', type: 'real'},
         {name: 'longitude', format: '', type: 'real'}
       ],
-      rows: jsonData.map(item => [
+      rows: processedData.map(item => [
         item.store_code,
         item.business_day,
         item.h3_index,
@@ -55,7 +69,7 @@ function Map() {
         addDataToMap({
           datasets: {
             info: {
-              label: 'Store Heatmap Data',
+              label: 'Store Heatmap',
               id: 'heatmap_data'
             },
             data
@@ -73,8 +87,9 @@ function Map() {
                   columns: {
                     lat: 'latitude',
                     lng: 'longitude',
-                    weight: 'q'
-                  }
+                    q: 'q'
+                  },
+                  isVisible: true
                 }
               }]
             }
